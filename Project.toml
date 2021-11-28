@@ -3,6 +3,9 @@ uuid = "f87c3e02-999e-4bff-b17f-f207a41ff0f0"
 authors = ["Matthew Schlegel <mkschleg@gmail.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+
 [compat]
 julia = "1"
 
