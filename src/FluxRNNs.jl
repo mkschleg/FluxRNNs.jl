@@ -4,6 +4,8 @@ using Flux
 import Flux: Zygote, @functor, OneHotArray, @adjoint, zeros32, glorot_uniform
 export RNN, LSTM, GRU, GRUv3, Recur
 
+using EllipsisNotation
+
 
 gate(h, n) = (1:h) .+ h*(n-1)
 gate(x::AbstractVector, h, n) = @view x[gate(h,n)]
@@ -42,16 +44,22 @@ mutable struct Recur{T,S}
   state::S
 end
 
-function (m::Recur)(x)
-  m.state, y = m.cell(m.state, x)
-  return y
+struct UsualInput end
+
+input_size(cell) = UsualInput()
+
+function forward!(::UsualInput, m::Recur, x::Union{AbstractMatrix, AbstractVector})
+    m.state, y = m.cell(m.state, x)
+    return y
 end
 
-function (m::Recur)(x::AbstractArray{T, 3}) where T
-  h = [m(view(x, :, :, i)) for i in 1:size(x, 3)]
-  sze = size(h[1])
-  reshape(reduce(hcat, h), sze[1], sze[2], length(h))
+function forward!(_, m::Recur, x)
+    h = [m(view(x, .., i)) for i in 1:size(x, ndims(x))]
+    sze = size(h[1])
+    reshape(reduce(hcat, h), sze[1], sze[2], length(h))
 end
+
+(m::Recur)(x) = forward!(input_size(m.cell), m, x)
 
 @functor Recur
 trainable(a::Recur) = (a.cell,)
