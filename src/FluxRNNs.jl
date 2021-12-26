@@ -44,17 +44,18 @@ mutable struct Recur{T,S}
   state::S
 end
 
-struct UsualInput end
+struct DenseInput end
+struct ConvInput end
 
-input_size(cell) = UsualInput()
+input_size(cell) = DenseInput()
 
-function forward!(::UsualInput, m::Recur, x::Union{AbstractMatrix, AbstractVector})
+function forward!(::DenseInput, m::Recur, x::Union{AbstractVector, AbstractMatrix})
     m.state, y = m.cell(m.state, x)
     return y
 end
 
-function forward!(_, m::Recur, x)
-    h = [m(view(x, .., i)) for i in 1:size(x, ndims(x))]
+function forward!(input_type, m::Recur, x)
+    h = [forward!(input_type, m, view(x, .., i)) for i in 1:size(x, ndims(x))]
     sze = size(h[1])
     reshape(reduce(hcat, h), sze[1], sze[2], length(h))
 end
