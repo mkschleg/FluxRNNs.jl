@@ -27,7 +27,7 @@ end
 
 function get_statistics(t)
     tms = t.times
-    mean(tms), var(tms), median(tms), minimum(tms), maximum(tms)
+    mean(tms), var(tms), median(tms), minimum(tms), maximum(tms), t.allocs, t.memory
 end
 
 function get_runtimes(cell; Ns = [2, 20, 200], Ts = [1, 8, 16, 64])
@@ -41,7 +41,9 @@ function get_runtimes(cell; Ns = [2, 20, 200], Ts = [1, 8, 16, 64])
         variance=Float64[],
         median=Float64[],
         minimum=Float64[],
-        maximum=Float64[]) for k in [:fw, :bw, :fwbw])
+        maximum=Float64[],
+        allocs=Int[],
+        memory=Int[]) for k in [:fw, :bw, :fwbw])
 
 
     Random.seed!(10)
@@ -77,8 +79,9 @@ function get_runtimes_3d(cell; Ns = [2, 20, 200], Ts = [1, 8, 16, 64])
         variance=Float64[],
         median=Float64[],
         minimum=Float64[],
-        maximum=Float64[]) for k in [:fw, :bw, :fwbw])
-
+        maximum=Float64[],
+        allocs=Int[],
+        memory=Int[]) for k in [:fw, :bw, :fwbw])
 
     Random.seed!(10)
     @showprogress "MatrixSize: " for n in Ns
