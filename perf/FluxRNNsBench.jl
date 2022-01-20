@@ -118,6 +118,7 @@ function run_benchmark(cells=[RNN, GRU, LSTM]; save_dir="results/$(git_head())",
             CSV.write(filename, rt[k])
         end
 
+        println("$(cell)3d-CPU")
         rt = get_runtimes_3d(cell; kwargs...)
         for k in keys(rt)
             filename = joinpath(cell_svpath, "$(k)_3d.csv")
