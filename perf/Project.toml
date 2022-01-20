@@ -1,0 +1,10 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+FluxRNNs = "f87c3e02-999e-4bff-b17f-f207a41ff0f0"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+ReTest = "e0db7c4e-2690-44b9-bad6-7687da720f89"
+Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
