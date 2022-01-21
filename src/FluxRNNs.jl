@@ -55,7 +55,7 @@ function forward!(::DenseInput, m::Recur, x::Union{AbstractVector, AbstractMatri
 end
 
 function forward!(input_type, m::Recur, x)
-    h = [forward!(input_type, m, view(x, .., i)) for i in 1:size(x, ndims(x))]
+    h = [forward!(input_type, m, slc) for slc in eachslice(x, dims=ndims(x))]
     sze = size(h[1])
     reshape(reduce(hcat, h), sze[1], sze[2], length(h))
 end
