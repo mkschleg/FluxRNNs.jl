@@ -103,8 +103,9 @@ function get_runtimes_3d(cell; Ns = [2, 20, 200], Ts = [1, 8, 16, 64])
     RUNTIMES
 end
 
-function run_benchmark(cells=[RNN, GRU, LSTM]; save_dir="results/$(git_head())", kwargs...)
+function run_benchmark(cells=[RNN, GRU, LSTM]; name="$(git_head())", kwargs...)
 
+    save_dir = joinpath("results", name)
     if !isdir(save_dir)
         mkpath(save_dir)
     end
@@ -120,7 +121,7 @@ function run_benchmark(cells=[RNN, GRU, LSTM]; save_dir="results/$(git_head())",
             filename = joinpath(cell_svpath, "$(k).csv")
             CSV.write(filename, rt[k])
         end
-
+        println()
         println("$(cell)3d-CPU")
         rt = get_runtimes_3d(cell; kwargs...)
         for k in keys(rt)
