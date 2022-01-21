@@ -1,5 +1,5 @@
 using BenchmarkTools
-import Flux: Flux, gradient
+import Flux: Flux, gradient, gpu
 using CUDA
 using Zygote: pullback
 
@@ -15,31 +15,31 @@ bw_recur(back) = back(1f0)
 fwbw_recur(m, ps, X) = gradient(() -> sum(sum(fw_recur(m, X))), ps)
 
 
-function run_benchmark_recur(model, x; cuda=true, show=false)
+function run_benchmark_recur(model, x; cuda=false, show=false)
     
-    if cuda 
-        model = model |> gpu
-        x = x |> gpu
-    end
-
-    ps = Flux.params(model)
-    y, back = pullback(() -> sum(sum(fw_recur(model, x))), ps)
-
-
     t_fw, t_bw, t_fwbw = if cuda
+        model_gpu = model |> gpu
+        x_gpu = x |> gpu
+
+        ps = Flux.params(model_gpu)
+        y, back = pullback(() -> sum(sum(fw_recur(model_gpu, x_gpu))), ps)
+        
         CUDA.allowscalar(false)
         # CUDA.device!(3)
-        fw_recur(model, x); GC.gc(); CUDA.reclaim(); #warmup
-        t_fw = @benchmark CUDA.@sync(fw_recur($model, $x)) teardown=(GC.gc(); CUDA.reclaim())
+        fw_recur(model_gpu, x_gpu); GC.gc(); CUDA.reclaim(); #warmup
+        t_fw = @benchmark CUDA.@sync(fw_recur($model_gpu, $x_gpu)) teardown=(GC.gc(); CUDA.reclaim())
 
         bw_recur(back); GC.gc(); CUDA.reclaim(); #warmup
         t_bw = @benchmark CUDA.@sync(bw_recur($back)) teardown=(GC.gc(); CUDA.reclaim())
         
-        fwbw_recur(model, ps, x); GC.gc(); CUDA.reclaim(); #warmup
-        t_fwbw = @benchmark CUDA.@sync(fwbw_recur($model, $ps, $x)) teardown=(GC.gc(); CUDA.reclaim())
+        fwbw_recur(model_gpu, ps, x_gpu); GC.gc(); CUDA.reclaim(); #warmup
+        t_fwbw = @benchmark CUDA.@sync(fwbw_recur($model_gpu, $ps, $x_gpu)) teardown=(GC.gc(); CUDA.reclaim())
         
         t_fw, t_bw, t_fwbw
     else
+        ps = Flux.params(model)
+        y, back = pullback(() -> sum(sum(fw_recur(model, x))), ps)
+
         Flux.reset!(model)
         fw_recur(model, x)  #warmup
         t_fw = @benchmark fw_recur($model, $x)
@@ -67,56 +67,3 @@ function run_benchmark_recur(model, x; cuda=true, show=false)
 
     (fw=t_fw, bw=t_bw, fwbw=t_fwbw)
 end
-
-# function run_benchmark_recur_3d(model, x; cuda=true, show=false)
-    
-#     if cuda 
-#         model = model |> gpu
-#         x = x |> gpu
-#     end
-
-#     ps = Flux.params(model)
-#     y, back = pullback(() -> sum(sum(fw_recur(model, x))), ps)
-
-
-#     t_fw, t_bw, t_fwbw = if cuda
-#         CUDA.allowscalar(false)
-#         # CUDA.device!(3)
-#         fw(model, x); GC.gc(); CUDA.reclaim(); #warmup
-#         t_fw = @benchmark CUDA.@sync(fw($model, $x)) teardown=(GC.gc(); CUDA.reclaim())
-
-#         bw(back); GC.gc(); CUDA.reclaim(); #warmup
-#         t_bw = @benchmark CUDA.@sync(bw($back)) teardown=(GC.gc(); CUDA.reclaim())
-        
-#         fwbw(model, ps, x); GC.gc(); CUDA.reclaim(); #warmup
-#         t_fwbw = @benchmark CUDA.@sync(fwbw($model, $ps, $x)) teardown=(GC.gc(); CUDA.reclaim())
-        
-#         t_fw, t_bw, t_fwbw
-#     else
-#         Flux.reset!(model)
-#         fw(model, x)  #warmup
-#         t_fw = @benchmark fw($model, $x)
-
-#         Flux.reset!(model)
-#         bw(back)  #warmup
-#         t_bw = @benchmark bw($back)
-
-#         Flux.reset!(model)
-#         fwbw(model, ps, x) # warmup
-#         t_fwbw = @benchmark fwbw($model, $ps, $x)
-
-#         Flux.reset!(model)
-#         t_fw, t_bw, t_fwbw
-#     end
-
-#     if show
-#         println("\t\tforward: ")
-#         @show t_fw
-#         println("\t\tbackward: ")
-#         @show t_bw
-#         println("\t\tforw and back: ")
-#         @show t_fwbw
-#     end
-
-#     (fw=t_fw, bw=t_bw, fwbw=t_fwbw)
-# end
