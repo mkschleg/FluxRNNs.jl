@@ -1,9 +1,62 @@
 
 
 
-function forward!(input_type, m::Recur{RNN}, x::CuArray)
-    h = [forward!(input_type, m, slc) for slc in eachslice(x, dims=ndims(x))]
-    sze = size(h[1])
-    reshape(reduce(hcat, h), sze[1], sze[2], length(h))
+
+import CUDA: CUDA, CUDNN
+
+# CuRNN{T} = Flux.RNNCell{<:Union{typeof(tanh),typeof(relu)},<:CuArray{T,2},<:CuArray{T,1}}
+# CuGRU{T} = Flux.GRUCell{<:CuArray{T,2},<:CuArray{T,1}}
+# CuLSTM{T} = Flux.LSTMCell{<:CuArray{T,2},<:CuArray{T,1}}
+# CuRNNs{T} = Union{CuRNN{T},CuGRU{T},CuLSTM{T}}
+
+
+struct CuRNNCell{F,A,V,S}
+  σ::F
+  W::A
+  state0::S
 end
+
+CuRNNCell(in::Integer, out::Integer, σ=tanh; init=Flux.glorot_uniform, initb=zeros32, init_state=zeros32) = 
+  CuRNNCell(σ, hcat(init(out, in+out), initb(out)), init_state(out,1))
+
+function (m::CuRNNCell)(h, x)
+    h = σ.(view(W, :, 1:size(x, 1))*x .+ view(W, :, size(x,1)+1:end-1)*h .+ view(W, :, end))
+    sz = size(x)
+    return h, reshape(h, :, sz[2:end]...)
+end
+
+@functor CuRNNCell
+
+function Base.show(io::IO, l::RNNCell)
+  # print(io, "CuRNNCell(", size(l.Wi, 2), ", ", size(l.Wi, 1))
+  # l.σ == identity || print(io, ", ", l.σ)
+  # print(io, ")")
+end
+
+"""
+    CuRNNCell
+"""
+CuRNN(a...; ka...) = Recur(CuRNNCell(a...; ka...))
+Recur(m::CuRNNCell) = Recur(m, m.state0)
+
+# function CUDNN.RNNDesc(m::CuRNN{T})
+# end
+
+
+
+function forward!(input_type, m::CuRNN{T}, x::CuArray{Float32, 3}) where T
+
+    # Specialize for cudnn.
+    ret = CUDNN.cudnnRNNForward(m.cell.W, x;
+                                hx=m.state,
+                                hiddenSize=2,
+                                inputSize=1,
+                                cellMode=CUDNN.CUDNN_RNN_TANH,
+                                biasMode=CUDNN.CUDNN_RNN_SINGLE_INP_BIAS);
+    m.state = ret[:, :, end]
+    ret
+end
+
+
+
 
