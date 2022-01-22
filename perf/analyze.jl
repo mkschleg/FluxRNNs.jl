@@ -4,16 +4,116 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ f134f60a-7a57-11ec-0d27-39d5655e32a0
 using PlutoUI, DataFrames, Plots, CSV
 
 # ╔═╡ 7ec8b2eb-e518-41cc-9694-bff7daea0f84
-begin
-	readdir("results")
-end
+result_dirs = readdir("results")
 
 # ╔═╡ 4a5ba47b-df2d-4889-83c0-86ea9b791cda
+@bind _compare_dirs PlutoUI.MultiSelect(result_dirs)
 
+# ╔═╡ 26999d60-9cce-419a-9681-3a9f415e055e
+possible_comparisons = let
+	pcn = readdir(joinpath("results", _compare_dirs[1]))
+	if length(_compare_dirs) != 1
+		for d in _compare_dirs[2:end]
+			pcn_tmp = readdir(joinpath("results", d))
+			pcn = pcn ∩ pcn_tmp
+		end
+	end
+	pcn
+end
+
+# ╔═╡ 374f5d20-64d1-4952-bab6-93019f8413ee
+@bind _comparison_str PlutoUI.Select(possible_comparisons)
+
+# ╔═╡ ca8c1dde-564b-4ac4-b730-5a97829eca5b
+
+FW_RESULTS = let
+	df = [CSV.read(joinpath("results", _compare_dirs[1], _comparison_str, "fw.csv"), DataFrame)]
+	if length(_compare_dirs) != 1
+		for d in _compare_dirs[2:end]
+			tmp_df = CSV.read(joinpath("results", _compare_dirs[1], _comparison_str, "fw.csv"), DataFrame)
+			push!(df, tmp_df)
+		end
+	end
+	df
+end
+
+
+# ╔═╡ 7700dbaf-92fa-49c7-9d83-b58bc4eacd1e
+ let
+	plt = plot()
+	for (dname, res) in zip(_compare_dirs, FW_RESULTS)
+		plot!(plt, filter(:n=>==(200), res)[!, :t], filter(:n=>==(200), res)[!, :mean], label=dname)
+	end
+	plt
+end
+
+# ╔═╡ c47eaae6-e021-43ca-a150-2a8fa30910c5
+let
+	operation = "fwbw_3d"
+	plts = []
+	for _comparison_str in possible_comparisons
+		RESULTS = let
+			df = [CSV.read(joinpath("results", _compare_dirs[1], _comparison_str, "$(operation).csv"), DataFrame)]
+			if length(_compare_dirs) != 1
+				for d in _compare_dirs[2:end]
+					tmp_df = CSV.read(joinpath("results", d, _comparison_str, "$(operation).csv"), DataFrame)
+					push!(df, tmp_df)
+				end
+			end
+			df
+		end
+		plt = plot()
+		for (dname, res) in zip(_compare_dirs, RESULTS)
+			plot!(plt, filter(:n=>==(200), res)[!, :t], filter(:n=>==(200), res)[!, :mean], label=dname, title=_comparison_str)
+		end
+		plt
+		push!(plts, plt)
+	end
+
+	
+	plot(plts...)
+end
+
+# ╔═╡ 5710bc6f-6b9d-4ab8-84cf-8af2abd39a76
+let
+	operation = "fwbw_3d"
+	plts = []
+	for _comparison_str in possible_comparisons
+		RESULTS = let
+			df = [CSV.read(joinpath("results", _compare_dirs[1], _comparison_str, "$(operation).csv"), DataFrame)]
+			if length(_compare_dirs) != 1
+				for d in _compare_dirs[2:end]
+					tmp_df = CSV.read(joinpath("results", d, _comparison_str, "$(operation).csv"), DataFrame)
+					push!(df, tmp_df)
+				end
+			end
+			df
+		end
+		plt = plot()
+		for (dname, res) in zip(_compare_dirs, RESULTS)
+			plot!(plt, filter(:n=>==(200), res)[!, :t], filter(:n=>==(200), res)[!, :median], label=dname, title=_comparison_str)
+		end
+		plt
+		push!(plts, plt)
+	end
+
+	
+	plot(plts...)
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -465,7 +565,7 @@ uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
 version = "2.36.0+0"
 
 [[LinearAlgebra]]
-deps = ["Libdl"]
+deps = ["Libdl", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[LogExpFunctions]]
@@ -527,6 +627,10 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "887579a3eb005446d514ab7aeac5d1d027658b8f"
 uuid = "e7412a2a-1a6e-54c0-be00-318e2571c051"
 version = "1.3.5+1"
+
+[[OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
 
 [[OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -624,7 +728,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["Serialization"]
+deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[RecipesBase]]
@@ -948,6 +1052,10 @@ git-tree-sha1 = "5982a94fcba20f02f42ace44b9894ee2b140fe47"
 uuid = "0ac62f75-1d6f-5e53-bd7c-93b484bb37c0"
 version = "0.15.1+0"
 
+[[libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
+
 [[libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "daacc84a041563f965be61859a36e17c4e4fcd55"
@@ -997,5 +1105,11 @@ version = "0.9.1+5"
 # ╠═f134f60a-7a57-11ec-0d27-39d5655e32a0
 # ╠═7ec8b2eb-e518-41cc-9694-bff7daea0f84
 # ╠═4a5ba47b-df2d-4889-83c0-86ea9b791cda
+# ╠═26999d60-9cce-419a-9681-3a9f415e055e
+# ╠═374f5d20-64d1-4952-bab6-93019f8413ee
+# ╠═ca8c1dde-564b-4ac4-b730-5a97829eca5b
+# ╠═7700dbaf-92fa-49c7-9d83-b58bc4eacd1e
+# ╠═c47eaae6-e021-43ca-a150-2a8fa30910c5
+# ╠═5710bc6f-6b9d-4ab8-84cf-8af2abd39a76
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
