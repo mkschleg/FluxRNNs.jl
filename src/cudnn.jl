@@ -50,14 +50,13 @@ function forward!(input_type, m::Recur{CuRNNCell}, x::CuArray{Float32, 3})
     # Specialize for cudnn.
     ret = CUDNN.cudnnRNNForward(m.cell.W, x;
                                 hx=m.state,
-                                hiddenSize=2,
-                                inputSize=1,
+                                hiddenSize=size(m.cell.W, 1),
+                                inputSize=size(x, 1),
                                 cellMode=CUDNN.CUDNN_RNN_TANH,
                                 biasMode=CUDNN.CUDNN_RNN_SINGLE_INP_BIAS);
     m.state = ret[:, :, end]
     ret
 end
-
 
 
 
