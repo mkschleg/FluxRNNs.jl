@@ -396,5 +396,6 @@ Recur(m::GRUv3Cell) = Recur(m, m.state0)
 end
 
 
+include("cudnn.jl")
 
 end

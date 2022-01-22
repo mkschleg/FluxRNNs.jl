@@ -1,8 +1,8 @@
 
 
 
-
-import CUDA: CUDA, CUDNN
+using CUDA
+# import CUDA: CUDA, CUDNN
 
 # CuRNN{T} = Flux.RNNCell{<:Union{typeof(tanh),typeof(relu)},<:CuArray{T,2},<:CuArray{T,1}}
 # CuGRU{T} = Flux.GRUCell{<:CuArray{T,2},<:CuArray{T,1}}
@@ -10,7 +10,7 @@ import CUDA: CUDA, CUDNN
 # CuRNNs{T} = Union{CuRNN{T},CuGRU{T},CuLSTM{T}}
 
 
-struct CuRNNCell{F,A,V,S}
+struct CuRNNCell{F,A,S}
   σ::F
   W::A
   state0::S
@@ -20,7 +20,8 @@ CuRNNCell(in::Integer, out::Integer, σ=tanh; init=Flux.glorot_uniform, initb=ze
   CuRNNCell(σ, hcat(init(out, in+out), initb(out)), init_state(out,1))
 
 function (m::CuRNNCell)(h, x)
-    h = σ.(view(W, :, 1:size(x, 1))*x .+ view(W, :, size(x,1)+1:end-1)*h .+ view(W, :, end))
+    W = m.W
+    h = σ.(view(W, :, 1:size(x, 1))*x .+ view(W, :, (size(x,1)+1):(size(W, 2)-1))*h .+ view(W, :, size(W,2)))
     sz = size(x)
     return h, reshape(h, :, sz[2:end]...)
 end
@@ -44,7 +45,7 @@ Recur(m::CuRNNCell) = Recur(m, m.state0)
 
 
 
-function forward!(input_type, m::CuRNN{T}, x::CuArray{Float32, 3}) where T
+function forward!(input_type, m::Recur{CuRNNCell}, x::CuArray{Float32, 3})
 
     # Specialize for cudnn.
     ret = CUDNN.cudnnRNNForward(m.cell.W, x;
